@@ -10,6 +10,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 
 #include "Characters/Main/PTPlayerController.h"
+#include "Characters/Main/PTAnimInstance.h"
 
 APTCharacter::APTCharacter()
 {
@@ -33,6 +34,8 @@ void APTCharacter::BeginPlay()
 	PTController->SetShowMouseCursor(true);
 	PTController->bEnableClickEvents = true;
 	PTController->bEnableMouseOverEvents = true;
+
+	PTAnimInstance = Cast<UPTAnimInstance>(GetMesh()->GetAnimInstance());
 }
 
 void APTCharacter::Tick(float DeltaTime)
@@ -68,6 +71,7 @@ void APTCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction(FName("Move"), EInputEvent::IE_Pressed, this, &APTCharacter::Move);
 	PlayerInputComponent->BindAction(FName("Move"), EInputEvent::IE_Released, this, &APTCharacter::MoveEnd);
 
+	PlayerInputComponent->BindAction(FName("Attack"), EInputEvent::IE_Pressed, this, &APTCharacter::Attack);
 }
 
 void APTCharacter::Move()
@@ -85,6 +89,14 @@ void APTCharacter::MoveEnd()
 		bIsFirst = true;
 		CurrentLocation = HitResult.Location;
 		UAIBlueprintHelperLibrary::SimpleMoveToLocation(PTController, CurrentLocation);
+	}
+}
+
+void APTCharacter::Attack()
+{
+	if (PTAnimInstance && AttackMontage)
+	{
+		PTAnimInstance->Montage_Play(AttackMontage);
 	}
 }
 

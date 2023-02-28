@@ -16,18 +16,20 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	class APTPlayerController* PTController;
-
 protected:
 	virtual void BeginPlay() override;
+	UPROPERTY(VisibleAnywhere, Category = Camera)
+	class USpringArmComponent* SpringArm;
+	UPROPERTY(VisibleAnywhere, Category = Camera)
+	class UCameraComponent* Camera;
+	class APTPlayerController* PTController;
+	class UPTAnimInstance* PTAnimInstance;
 
 public:
-	UPROPERTY(VisibleAnywhere, Category = Camera)
-		class USpringArmComponent* SpringArm;
-	UPROPERTY(VisibleAnywhere, Category = Camera)
-		class UCameraComponent* Camera;
+	
 
 	FVector CurrentLocation = GetActorLocation();
+	bool bIsFirst = false;
 
 	/** Inform of AnimInstance */
 
@@ -38,7 +40,9 @@ public:
 	/** Input Callback */
 	void Move();
 	void MoveEnd();
+	void Attack();
 
-	bool bIsFirst = false;
-
+	/** Montage */
+	UPROPERTY(EditDefaultsOnly)
+	UAnimMontage* AttackMontage;
 };

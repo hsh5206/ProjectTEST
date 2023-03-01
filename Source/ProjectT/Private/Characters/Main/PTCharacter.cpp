@@ -2,19 +2,27 @@
 
 
 #include "Characters/Main/PTCharacter.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFrameWork/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
+
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystem/Components/PTAbilitySystemComponent.h"
+#include "AbilitySystem/Attribute/PTAttributeSet.h"
+#include "DataAssets/PTCharacterDataAsset.h"
 
 #include "Characters/Main/PTPlayerController.h"
-#include "Characters/Main/PTAnimInstance.h"
 
-APTCharacter::APTCharacter()
+APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Overlap);
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(GetRootComponent());
@@ -24,6 +32,15 @@ APTCharacter::APTCharacter()
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);
+
+	bAlwaysRelevant = true;
+
+	/** Ability System */
+	AbilitySystemComponent = CreateDefaultSubobject<UPTAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+	AttributeSet = CreateDefaultSubobject<UPTAttributeSet>(TEXT("AttributeSet"));
+
 }
 
 void APTCharacter::BeginPlay()
@@ -34,8 +51,6 @@ void APTCharacter::BeginPlay()
 	PTController->SetShowMouseCursor(true);
 	PTController->bEnableClickEvents = true;
 	PTController->bEnableMouseOverEvents = true;
-
-	PTAnimInstance = Cast<UPTAnimInstance>(GetMesh()->GetAnimInstance());
 }
 
 void APTCharacter::Tick(float DeltaTime)
@@ -70,8 +85,16 @@ void APTCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 	PlayerInputComponent->BindAction(FName("Move"), EInputEvent::IE_Pressed, this, &APTCharacter::Move);
 	PlayerInputComponent->BindAction(FName("Move"), EInputEvent::IE_Released, this, &APTCharacter::MoveEnd);
+}
 
-	PlayerInputComponent->BindAction(FName("Attack"), EInputEvent::IE_Pressed, this, &APTCharacter::Attack);
+void APTCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	if (IsValid(CharacterDataAsset))
+	{
+		SetCharacterData(CharacterDataAsset->CharacterData);
+	}
 }
 
 void APTCharacter::Move()
@@ -92,11 +115,103 @@ void APTCharacter::MoveEnd()
 	}
 }
 
-void APTCharacter::Attack()
+/** 
+*
+* Ability System
+*
+*/
+UAbilitySystemComponent* APTCharacter::GetAbilitySystemComponent() const
 {
-	if (PTAnimInstance && AttackMontage)
+	return AbilitySystemComponent;
+}
+
+bool APTCharacter::ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, FGameplayEffectContextHandle InEffectContext)
+{
+	if (!Effect.Get()) return false;
+
+	// EffectSpec핸들러에 준비가 완료된 Effect를 저장
+	FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(Effect, 1, InEffectContext);
+	if (SpecHandle.IsValid())
 	{
-		PTAnimInstance->Montage_Play(AttackMontage);
+		// ActiveEffect핸들러에 SpecHandle의 Effect사양을 적용
+		FActiveGameplayEffectHandle ActiveGEHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		return ActiveGEHandle.WasSuccessfullyApplied();
+	}
+	return false;
+}
+
+void APTCharacter::GiveAbilities()
+{
+	if (HasAuthority() && AbilitySystemComponent)
+	{
+		for (auto DefaultAbility : CharacterData.Abilities)
+		{
+			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(DefaultAbility));
+		}
 	}
 }
 
+void APTCharacter::ApplyStartupEffects()
+{
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+		EffectContext.AddSourceObject(this);
+
+		for (auto CharacterEffect : CharacterData.Effects)
+		{
+			ApplyGameplayEffectToSelf(CharacterEffect, EffectContext);
+		}
+
+	}
+}
+
+void APTCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+	GiveAbilities();
+	ApplyStartupEffects();
+}
+
+void APTCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+}
+
+/**
+*
+* Data Assets
+*
+*/
+FCharacterData APTCharacter::GetCharacterData() const
+{
+	return CharacterData;
+}
+
+void APTCharacter::SetCharacterData(const FCharacterData& InCharacterData)
+{
+	CharacterData = InCharacterData;
+	InitFromCharacterData(CharacterData);
+}
+
+void APTCharacter::OnRep_CharacterData()
+{
+	InitFromCharacterData(CharacterData, true);
+}
+
+void APTCharacter::InitFromCharacterData(const FCharacterData& InCharacterData, bool bFromReplication)
+{
+
+}
+
+void APTCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(APTCharacter, CharacterData);
+}

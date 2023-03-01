@@ -4,17 +4,28 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AbilitySystemInterface.h"
+#include "Abilities/GameplayAbility.h"
+
+#include "Characters/PTCharacterTypes.h"
+
 #include "PTCharacter.generated.h"
 
+class UGamplayEffect;
+class UGameplayAbility;
+class UPTAbilitySystemComponent;
+class UPTAttributeSet;
+
 UCLASS()
-class PROJECTT_API APTCharacter : public ACharacter
+class PROJECTT_API APTCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
-	APTCharacter();
+	APTCharacter(const class FObjectInitializer& ObjectInitializer);
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void PostInitializeComponents() override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -25,24 +36,66 @@ protected:
 	class APTPlayerController* PTController;
 	class UPTAnimInstance* PTAnimInstance;
 
-public:
-	
+	/** Montage */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "PT | Animation")
+	UAnimMontage* AttackMontage;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "PT | Animation")
+	UAnimMontage* DeathMontage;
 
+public:
+	/** Move */
 	FVector CurrentLocation = GetActorLocation();
 	bool bIsFirst = false;
-
-	/** Inform of AnimInstance */
-
-
-	/** Input Value */
-	bool bIsMovePressed = false;
-
-	/** Input Callback */
 	void Move();
 	void MoveEnd();
-	void Attack();
+	bool bIsMovePressed = false;
 
-	/** Montage */
+
+/**
+*
+* Ability System
+*
+*/
+public:
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	// GameplayEffect 적용
+	bool ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, FGameplayEffectContextHandle InEffectContext);
+
+protected:
 	UPROPERTY(EditDefaultsOnly)
-	UAnimMontage* AttackMontage;
+	UPTAbilitySystemComponent* AbilitySystemComponent;
+	UPROPERTY(Transient)
+	UPTAttributeSet* AttributeSet;
+
+	void GiveAbilities();
+	void ApplyStartupEffects();
+
+	// 클라이언트와 서버에서의 초기화를 위함
+	virtual void PossessedBy(AController* NewController) override; // 서버
+	virtual void OnRep_PlayerState() override; // 클라이언트
+
+/**
+*
+* Data Assets
+*
+*/
+public:
+	UFUNCTION(BlueprintCallable)
+	FCharacterData GetCharacterData() const;
+	UFUNCTION(BlueprintCallable)
+	void SetCharacterData(const FCharacterData& InCharacterData);
+
+protected:
+	UPROPERTY(ReplicatedUsing = OnRep_CharacterData)
+	FCharacterData CharacterData;
+
+	UFUNCTION()
+	void OnRep_CharacterData();
+
+	virtual void InitFromCharacterData(const FCharacterData& InCharacterData, bool bFromReplication = false);
+
+	UPROPERTY(EditDefaultsOnly)
+	class UPTCharacterDataAsset* CharacterDataAsset;
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps);
 };

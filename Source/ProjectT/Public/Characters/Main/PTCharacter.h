@@ -111,9 +111,23 @@ public:
 protected:
 	UFUNCTION(BlueprintCallable)
 	void CreateGameSession();
+	UFUNCTION(BlueprintCallable)
+	void FindGameSessions();
+
 	// 세션 생성 델리게이트 콜백
 	void OnCreateSessionComplete(FName SessionName, bool bWasSuccesful);
+	// 세션 찾기 델리게이트 콜백
+	void OnFindSessionsComplete(bool bWasSuccesful);
+	// 세션 참가 델리게이트 콜백
+	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+
 private:
 	// 세션 생성 델리게이트
 	FOnCreateSessionCompleteDelegate CreateSessionCompleteDelegate;
+	// 세션 찾기 델리게이트
+	FOnFindSessionsCompleteDelegate FindSessionsCompleteDelegate;
+	// 세션 참가 델리게이트
+	FOnJoinSessionCompleteDelegate JoinSessionCompleteDelegate;
+	// 세션 찾기 결과Arr
+	TSharedPtr<FOnlineSessionSearch> SessionSearch;
 };

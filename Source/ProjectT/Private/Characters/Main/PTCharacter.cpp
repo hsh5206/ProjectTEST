@@ -18,7 +18,11 @@
 
 #include "Characters/Main/PTPlayerController.h"
 
-APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer)
+#include "OnlineSubsystem.h"
+#include "OnlineSessionSettings.h"
+
+APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer) :
+	CreateSessionCompleteDelegate(FOnCreateSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnCreateSessionComplete))
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -41,6 +45,22 @@ APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer)
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 	AttributeSet = CreateDefaultSubobject<UPTAttributeSet>(TEXT("AttributeSet"));
 
+	/** Online SubSystem */
+	IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get();
+	if (OnlineSubsystem)
+	{
+		OnlineSessionInterface = OnlineSubsystem->GetSessionInterface();
+
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15.f,
+				FColor::Blue,
+				FString::Printf(TEXT("Found subsystem %s"), *OnlineSubsystem->GetSubsystemName().ToString())
+			);
+		}
+	}
 }
 
 void APTCharacter::BeginPlay()
@@ -214,4 +234,67 @@ void APTCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(APTCharacter, CharacterData);
+}
+
+/**
+*
+* Online Subsystem
+*
+*/
+void APTCharacter::CreateGameSession()
+{
+	if (!OnlineSessionInterface.IsValid())
+	{
+		return;
+	}
+
+	// 扁粮 技记 昏力
+	auto ExistingSession = OnlineSessionInterface->GetNamedSession(NAME_GameSession);
+	if (ExistingSession != nullptr)
+	{
+		OnlineSessionInterface->DestroySession(NAME_GameSession);
+	}
+
+	// 目胶乓 胆府霸捞飘 殿废
+	OnlineSessionInterface->AddOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteDelegate);
+
+	// 技记 技泼 棺 技记 积己
+	TSharedPtr<FOnlineSessionSettings> SessionSettings = MakeShareable(new FOnlineSessionSettings());
+	SessionSettings->bIsLANMatch = false;
+	SessionSettings->NumPublicConnections = 4;
+	SessionSettings->bAllowJoinInProgress = true;
+	SessionSettings->bAllowJoinViaPresence = true;
+	SessionSettings->bShouldAdvertise = true;
+	SessionSettings->bUsesPresence = true;
+	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+	OnlineSessionInterface->CreateSession(*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, *SessionSettings);
+}
+
+// 技记 积己 胆府霸捞飘 妮归
+void APTCharacter::OnCreateSessionComplete(FName SessionName, bool bWasSuccesful)
+{
+	if (bWasSuccesful)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15.f,
+				FColor::Green,
+				FString::Printf(TEXT("Successed to Create Session : %s"), *SessionName.ToString())
+			);
+		}
+	}
+	else
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15.f,
+				FColor::Red,
+				FString(TEXT("Failed to Create Session."))
+			);
+		}
+	}
 }

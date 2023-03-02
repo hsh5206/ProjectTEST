@@ -8,6 +8,10 @@
 #include "PTGameInstanceSubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnCreateSessionComplete, bool, bWasSuccessful);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FMultiplayerOnFindSessionsComplete, const TArray<FOnlineSessionSearchResult>& SessionResults, bool bWasSuccessful);
+DECLARE_MULTICAST_DELEGATE_OneParam(FMultiplayerOnJoinSessionComplete, EOnJoinSessionCompleteResult::Type Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnStartSessionComplete, bool, bWasSuccessful);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnDestroySessionComplete, bool, bWasSuccessful);
 
 UCLASS()
 class PROJECTT_API UPTGameInstanceSubsystem : public UGameInstanceSubsystem
@@ -19,6 +23,12 @@ public:
 
 	UPROPERTY(BlueprintAssignable, VisibleAnywhere, BlueprintCallable, Category = "Event")
 	FMultiplayerOnCreateSessionComplete MultiplayerOnCreateSessionComplete;
+	FMultiplayerOnFindSessionsComplete MultiplayerOnFindSessionsComplete;
+	FMultiplayerOnJoinSessionComplete MultiplayerOnJoinSessionComplete;
+	UPROPERTY(BlueprintAssignable, VisibleAnywhere, BlueprintCallable, Category = "Event")
+	FMultiplayerOnStartSessionComplete MultiplayerOnStartSessionComplete;
+	UPROPERTY(BlueprintAssignable, VisibleAnywhere, BlueprintCallable, Category = "Event")
+	FMultiplayerOnDestroySessionComplete MultiplayerOnDestroySessionComplete;
 
 	// Menu Handle
 	void CreateSession(int32 NumPublicConnections);
@@ -41,6 +51,8 @@ protected:
 
 private:
 	IOnlineSessionPtr SessionInterface;
+	TSharedPtr<FOnlineSessionSettings> SessionSettings;
+	TSharedPtr<FOnlineSessionSearch> SessionSearch; // 세션 찾기 결과Arr
 
 	// 세션 생성 델리게이트
 	FOnCreateSessionCompleteDelegate CreateSessionCompleteDelegate;
@@ -57,4 +69,5 @@ private:
 	// 세션 제거 델리게이트
 	FOnDestroySessionCompleteDelegate DestroySessionCompleteDelegate;
 	FDelegateHandle DestroySessionCompleteDelegateHandle;
+
 };

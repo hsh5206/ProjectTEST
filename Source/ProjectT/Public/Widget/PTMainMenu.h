@@ -25,7 +25,6 @@ public:
 
 protected:
 	virtual bool Initialize() override;
-	virtual void NativeConstruct() override;
 	virtual void OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld) override;
 
 private:

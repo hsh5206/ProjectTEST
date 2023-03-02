@@ -4,6 +4,8 @@
 #include "PTGameInstanceSubsystem.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSessionSettings.h"
+#include "OnlineSessionSettings.h"
+#include "Interfaces/OnlineSessionInterface.h"
 
 #include "PTGameInstanceSubsystem.h"
 
@@ -36,7 +38,7 @@ void UPTGameInstanceSubsystem::CreateSession(int32 NumPublicConnections)
 	CreateSessionCompleteDelegateHandle = SessionInterface->AddOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteDelegate);
 
 	// 技记 技泼 棺 技记 积己
-	TSharedPtr<FOnlineSessionSettings> SessionSettings = MakeShareable(new FOnlineSessionSettings());
+	SessionSettings = MakeShareable(new FOnlineSessionSettings());
 	SessionSettings->bIsLANMatch = IOnlineSubsystem::Get()->GetSubsystemName() == "NULL" ? true : false;
 	SessionSettings->NumPublicConnections = NumPublicConnections;
 	SessionSettings->bAllowJoinInProgress = true;
@@ -56,10 +58,49 @@ void UPTGameInstanceSubsystem::CreateSession(int32 NumPublicConnections)
 
 void UPTGameInstanceSubsystem::FindSessions(int32 MAxSearchResults)
 {
+	if (!SessionInterface.IsValid()) return;
+
+	FindSessionsCompleteDelegateHandle = SessionInterface->AddOnFindSessionsCompleteDelegate_Handle(FindSessionsCompleteDelegate);
+
+	SessionSearch = nullptr;
+
+	// 技记 茫扁
+	SessionSearch = MakeShareable(new FOnlineSessionSearch());
+	SessionSearch->MaxSearchResults = MAxSearchResults;
+	SessionSearch->bIsLanQuery = IOnlineSubsystem::Get()->GetSubsystemName() == "NULL" ? true : false;
+	SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
+	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+	if (!SessionInterface->FindSessions(*LocalPlayer->GetPreferredUniqueNetId(), SessionSearch.ToSharedRef()))
+	{
+		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(FindSessionsCompleteDelegateHandle);
+
+		MultiplayerOnFindSessionsComplete.Broadcast(TArray<FOnlineSessionSearchResult>(), false);
+
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15.f,
+				FColor::Green,
+				FString::Printf(TEXT("Failed Session Find"))
+			);
+		}
+	}
 }
 
 void UPTGameInstanceSubsystem::JoinSession(const FOnlineSessionSearchResult& SessionResults)
 {
+	if (!SessionInterface.IsValid()) return;
+
+	JoinSessionCompleteDelegateHandle = SessionInterface->AddOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegate);
+
+	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+	if (!SessionInterface->JoinSession(*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, SessionResults))
+	{
+		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(JoinSessionCompleteDelegateHandle);
+
+		MultiplayerOnJoinSessionComplete.Broadcast(EOnJoinSessionCompleteResult::UnknownError);
+	}
 }
 
 void UPTGameInstanceSubsystem::DestroySession()
@@ -76,15 +117,46 @@ void UPTGameInstanceSubsystem::OnCreateSessionComplete(FName SessionName, bool b
 	{
 		SessionInterface->ClearOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteDelegateHandle);
 	}
+
 	MultiplayerOnCreateSessionComplete.Broadcast(true);
 }
 
 void UPTGameInstanceSubsystem::OnFindSessionsComplete(bool bWasSuccesful)
 {
+	if (SessionInterface.IsValid())
+	{
+		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(FindSessionsCompleteDelegateHandle);
+	}
+
+	if (SessionSearch->SearchResults.Num() <= 0)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15.f,
+				FColor::Green,
+				FString::Printf(TEXT("0 Sessions"))
+			);
+		}
+		MultiplayerOnFindSessionsComplete.Broadcast(TArray<FOnlineSessionSearchResult>(), false);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FindSessions 3"));
+
+		MultiplayerOnFindSessionsComplete.Broadcast(SessionSearch->SearchResults, true);
+	}
 }
 
 void UPTGameInstanceSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
 {
+	if (SessionInterface)
+	{
+		SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegateHandle);
+	}
+
+	MultiplayerOnJoinSessionComplete.Broadcast(Result);
 }
 
 void UPTGameInstanceSubsystem::OnStartSessionComplete(FName SessionName, bool bWasSuccesful)

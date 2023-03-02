@@ -1,8 +1,14 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Widget/PT_MultiplayMenu.h"
 #include "Components/Button.h"
+#include "Components/Slider.h"
+#include "Components/TextBlock.h"
+
+#include "OnlineSessionSettings.h"
+#include "Components/ScrollBox.h"
+#include "OnlineSubsystem.h"
 
 #include "Widget/PT_ServerInfo.h"
 #include "PTGameInstanceSubsystem.h"
@@ -23,6 +29,10 @@ bool UPT_MultiplayMenu::Initialize()
 	{
 		Button_Back->OnClicked.AddDynamic(this, &ThisClass::BtnBackClicked);
 	}
+	if (Slider_PlayerNum)
+	{
+		Slider_PlayerNum->OnValueChanged.AddDynamic(this, &ThisClass::SliderChanged);
+	}
 
 	UGameInstance* GameInstance = GetGameInstance();
 	if (GameInstance)
@@ -33,23 +43,24 @@ bool UPT_MultiplayMenu::Initialize()
 	if (PTGIS)
 	{
 		PTGIS->MultiplayerOnCreateSessionComplete.AddDynamic(this, &ThisClass::OnCreateSession);
+		PTGIS->MultiplayerOnFindSessionsComplete.AddUObject(this, &ThisClass::OnFindSessions);
 	}
 
-	return true;
-}
-
-void UPT_MultiplayMenu::NativeConstruct()
-{
 	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
 	if (PlayerController && ServerInfoClass)
 	{
 		ServerInfo = CreateWidget<UPT_ServerInfo>(GetWorld(), ServerInfoClass);
 	}
+
+	return true;
 }
 
 void UPT_MultiplayMenu::BtnRefreshClicked()
 {
-
+	if (PTGIS)
+	{
+		PTGIS->FindSessions(1000);
+	}
 }
 
 void UPT_MultiplayMenu::BtnHostClicked()
@@ -65,6 +76,13 @@ void UPT_MultiplayMenu::BtnBackClicked()
 	RemoveFromParent();
 
 	OnBtnBackClickedDelegation.Broadcast();
+}
+
+void UPT_MultiplayMenu::SliderChanged(float value)
+{
+	NumPublicConnections = int32(value);
+	FString Str = FString::Printf(TEXT("%d명"), int32(value));
+	PlayerNum->SetText(FText::FromString(Str));
 }
 
 void UPT_MultiplayMenu::OnCreateSession(bool bWasSuccessful)
@@ -89,4 +107,52 @@ void UPT_MultiplayMenu::OnCreateSession(bool bWasSuccessful)
 			);
 		}
 	}
+}
+
+void UPT_MultiplayMenu::OnFindSessions(const TArray<FOnlineSessionSearchResult>& SessionResults, bool bWasSuccessful)
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			-1,
+			15.f,
+			FColor::Green,
+			FString::Printf(TEXT("FindSession FIn Multiplay Menu Callback"))
+		);
+	}
+	if (bWasSuccessful)
+	{
+		for (auto Result : SessionResults)
+		{
+			FString UserName = Result.Session.OwningUserName;
+			int32 PlayerCurNum = Result.Session.NumOpenPublicConnections;
+			int32 MaxPlayerNum = Result.Session.SessionSettings.NumPublicConnections;
+			int32 Ping = Result.PingInMs;
+
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(
+					-1,
+					15.f,
+					FColor::Green,
+					FString::Printf(TEXT("%s, %d / %d, %d"), *UserName, PlayerCurNum, MaxPlayerNum, Ping)
+				);
+			}
+			
+			UPT_ServerInfo* Info = CreateWidget<UPT_ServerInfo>(GetWorld(), ServerInfoClass);
+			Info->SetText(UserName, PlayerCurNum, MaxPlayerNum, Ping);
+			Info->SearchResult = Result;
+			ServerScroll->AddChild(Info);
+		}
+	}
+}
+
+void UPT_MultiplayMenu::OnStartSession(bool bWasSuccessful)
+{
+
+}
+
+void UPT_MultiplayMenu::OnDestroySession(bool bWasSuccessful)
+{
+
 }

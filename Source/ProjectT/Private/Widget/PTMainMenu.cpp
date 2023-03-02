@@ -59,11 +59,6 @@ bool UPTMainMenu::Initialize()
 		Button_Exit->OnClicked.AddDynamic(this, &ThisClass::BtnExitClicked);
 	}
 
-	return true;
-}
-
-void UPTMainMenu::NativeConstruct()
-{
 	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
 	if (PlayerController && MultiplayMenuClass)
 	{
@@ -71,6 +66,7 @@ void UPTMainMenu::NativeConstruct()
 		MultiplayMenu->OnBtnBackClickedDelegation.AddDynamic(this, &ThisClass::MultiMenuBackCliced);
 	}
 
+	return true;
 }
 
 void UPTMainMenu::OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld)
@@ -88,11 +84,6 @@ void UPTMainMenu::BtnMultiClicked()
 	{
 		MultiplayMenu->AddToViewport();
 	}
-	
-	/*if (PTGIS)
-	{
-		PTGIS->FindSessions(10);
-	}*/
 }
 
 void UPTMainMenu::BtnSingleClicked()
@@ -107,12 +98,12 @@ void UPTMainMenu::BtnLoadClicked()
 
 void UPTMainMenu::BtnSettingsClicked()
 {
-
+	/** 환경설정 추후 */
 }
 
 void UPTMainMenu::BtnExitClicked()
 {
-
+	// 블루프린트
 }
 
 void UPTMainMenu::MultiMenuBackCliced()
@@ -131,6 +122,7 @@ void UPTMainMenu::MenuTearDown()
 		{
 			FInputModeGameOnly InputModeData;
 			PlayerController->SetInputMode(InputModeData);
+			PlayerController->SetShowMouseCursor(false);
 		}
 	}
 }

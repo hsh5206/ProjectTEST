@@ -18,13 +18,7 @@
 
 #include "Characters/Main/PTPlayerController.h"
 
-#include "OnlineSubsystem.h"
-#include "OnlineSessionSettings.h"
-
-APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer) :
-	CreateSessionCompleteDelegate(FOnCreateSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnCreateSessionComplete)),
-	FindSessionsCompleteDelegate(FOnFindSessionsCompleteDelegate::CreateUObject(this, &ThisClass::OnFindSessionsComplete)),
-	JoinSessionCompleteDelegate(FOnJoinSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnJoinSessionComplete))
+APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -46,23 +40,6 @@ APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer) :
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 	AttributeSet = CreateDefaultSubobject<UPTAttributeSet>(TEXT("AttributeSet"));
-
-	/** Online SubSystem */
-	IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get();
-	if (OnlineSubsystem)
-	{
-		OnlineSessionInterface = OnlineSubsystem->GetSessionInterface();
-
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				15.f,
-				FColor::Blue,
-				FString::Printf(TEXT("Found subsystem %s"), *OnlineSubsystem->GetSubsystemName().ToString())
-			);
-		}
-	}
 }
 
 void APTCharacter::BeginPlay()
@@ -70,9 +47,7 @@ void APTCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	PTController = Cast<APTPlayerController>(GetController());
-	PTController->SetShowMouseCursor(true);
-	PTController->bEnableClickEvents = true;
-	PTController->bEnableMouseOverEvents = true;
+	//PTController->SetShowMouseCursor(true);
 }
 
 void APTCharacter::Tick(float DeltaTime)
@@ -236,155 +211,4 @@ void APTCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(APTCharacter, CharacterData);
-}
-
-/**
-*
-* Online Subsystem
-*
-*/
-void APTCharacter::CreateGameSession()
-{
-	if (!OnlineSessionInterface.IsValid())
-	{
-		return;
-	}
-
-	// 기존 세션 삭제
-	auto ExistingSession = OnlineSessionInterface->GetNamedSession(NAME_GameSession);
-	if (ExistingSession != nullptr)
-	{
-		OnlineSessionInterface->DestroySession(NAME_GameSession);
-	}
-
-	// 커스텀 델리게이트 등록
-	OnlineSessionInterface->AddOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteDelegate);
-
-	// 세션 세팅 및 세션 생성
-	TSharedPtr<FOnlineSessionSettings> SessionSettings = MakeShareable(new FOnlineSessionSettings());
-	SessionSettings->bIsLANMatch = false;
-	SessionSettings->NumPublicConnections = 4;
-	SessionSettings->bAllowJoinInProgress = true;
-	SessionSettings->bAllowJoinViaPresence = true;
-	SessionSettings->bShouldAdvertise = true;
-	SessionSettings->bUsesPresence = true;
-	// SessionSettings->Set(FName("MatchType"), FString("FreeForAll"), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing); // Match Type
-	// SessionSettings->bUseLobbiesIfAbailable = true;
-	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
-	OnlineSessionInterface->CreateSession(*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, *SessionSettings);
-}
-
-void APTCharacter::FindGameSessions()
-{
-	if (!OnlineSessionInterface.IsValid()) return;
-
-	// 커스텀 델리게이트 추가
-	OnlineSessionInterface->AddOnFindSessionsCompleteDelegate_Handle(FindSessionsCompleteDelegate);
-
-	// 세션 찾기
-	SessionSearch = MakeShareable(new FOnlineSessionSearch());
-	SessionSearch->MaxSearchResults = 10000; // 현재 개발용 steam DevAppID(480) 사용중이므로 높게 설정
-	SessionSearch->bIsLanQuery = false;
-	SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
-	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
-	OnlineSessionInterface->FindSessions(*LocalPlayer->GetPreferredUniqueNetId(), SessionSearch.ToSharedRef());
-}
-
-void APTCharacter::OnCreateSessionComplete(FName SessionName, bool bWasSuccesful)
-{
-	if (bWasSuccesful)
-	{
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				15.f,
-				FColor::Green,
-				FString::Printf(TEXT("Successed to Create Session : %s"), *SessionName.ToString())
-			);
-		}
-
-		// 리슨서버로 메인레벨로 이동
-		UWorld* World = GetWorld();
-		if (World)
-		{
-			World->ServerTravel(FString("/Game/Map/MainLevel?listen"));
-		}
-	}
-	else
-	{
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				15.f,
-				FColor::Red,
-				FString(TEXT("Failed to Create Session."))
-			);
-		}
-	}
-}
-
-void APTCharacter::OnFindSessionsComplete(bool bWasSuccesful)
-{
-	if (!OnlineSessionInterface.IsValid()) return;
-
-	for (auto Result : SessionSearch->SearchResults)
-	{
-		FString Id = Result.GetSessionIdStr();
-		FString User = Result.Session.OwningUserName;
-		/*FString MatchType;
-		Result.Session.SessionSettings.Get(FName("MatchType"), MatchType);
-		if (MatchType == FString("FreeForAll"))
-		{
-			if (GEngine)
-			{
-				GEngine->AddOnScreenDebugMessage(
-					-1,
-					15.f,
-					FColor::Cyan,
-					FString::Printf(TEXT("ID : %s, User : %s, MatchType : %s"), *Id, *User, *MatchType)
-				);
-			}
-		}*/
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				15.f,
-				FColor::Cyan,
-				FString::Printf(TEXT("ID : %s, User : %s"), *Id, *User)
-			);
-		}
-
-		OnlineSessionInterface->AddOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegate);
-		const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
-		OnlineSessionInterface->JoinSession(*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, Result);
-	}
-}
-
-void APTCharacter::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
-{
-	if (!OnlineSessionInterface.IsValid()) return;
-
-	FString Address;
-	OnlineSessionInterface->GetResolvedConnectString(NAME_GameSession, Address);
-	if (OnlineSessionInterface->GetResolvedConnectString(NAME_GameSession, Address))
-	{
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				15.f,
-				FColor::Yellow,
-				FString::Printf(TEXT("Connect string : %s"), *Address)
-			);
-		}
-
-		APlayerController* PlayerController = GetGameInstance()->GetFirstLocalPlayerController();
-		if (PlayerController)
-		{
-			PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
-		}
-	}
 }

@@ -26,7 +26,6 @@ public:
 
 protected:
 	virtual bool Initialize() override;
-	void NativeConstruct() override;
 
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -39,20 +38,33 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	class UButton* Button_Back;
 	
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* PlayerNum;
+	UPROPERTY(meta = (BindWidget))
+	class USlider* Slider_PlayerNum;
+	
 	UFUNCTION()
 	void BtnRefreshClicked();
 	UFUNCTION()
 	void BtnHostClicked();
 	UFUNCTION()
 	void BtnBackClicked();
+	UFUNCTION()
+	void SliderChanged(float value);
 
 	// for Multi
 	class UPTGameInstanceSubsystem* PTGIS;
 
-	/** Host Infos */
-	int32 NumPublicConnections = 4;
+	/** Infos */
+	int32 NumPublicConnections = 2; // Host할 인원
+	//TSharedPtr<FOnlineSessionSearch> SessionSearch; // 세션 찾기 결과Arr
 
 	/** Callbacks custom delegate from multiplyaer */
 	UFUNCTION()
 	void OnCreateSession(bool bWasSuccessful);
+	void OnFindSessions(const TArray<FOnlineSessionSearchResult>& SessionResults, bool bWasSuccessful);
+	UFUNCTION()
+	void OnStartSession(bool bWasSuccessful);
+	UFUNCTION()
+	void OnDestroySession(bool bWasSuccessful);
 };

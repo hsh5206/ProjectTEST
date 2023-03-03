@@ -165,6 +165,9 @@ void APTCharacter::Landed(const FHitResult& Hit)
 	{
 		AbilitySystemComponent->RemoveActiveEffectsWithTags(InAirTag);
 	}
+
+	CurrentLocation = GetActorLocation();
+	UAIBlueprintHelperLibrary::SimpleMoveToLocation(PTController, CurrentLocation);
 }
 
 /** 

@@ -46,7 +46,7 @@ void UPTGameInstanceSubsystem::CreateSession(int32 NumPublicConnections)
 	SessionSettings->bShouldAdvertise = true;
 	SessionSettings->bUsesPresence = true;
 	// SessionSettings->Set(FName("MatchType"), FString("FreeForAll"), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing); // Match Type
-	// SessionSettings->bUseLobbiesIfAbailable = true;
+	SessionSettings->bUseLobbiesIfAvailable = true;
 	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
 	if (!SessionInterface->CreateSession(*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, *SessionSettings))
 	{
@@ -82,7 +82,7 @@ void UPTGameInstanceSubsystem::FindSessions(int32 MAxSearchResults)
 				-1,
 				15.f,
 				FColor::Green,
-				FString::Printf(TEXT("Failed Session Find"))
+				FString::Printf(TEXT("Failed Session Find : Subsystem"))
 			);
 		}
 	}
@@ -143,8 +143,6 @@ void UPTGameInstanceSubsystem::OnFindSessionsComplete(bool bWasSuccesful)
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("FindSessions 3"));
-
 		MultiplayerOnFindSessionsComplete.Broadcast(SessionSearch->SearchResults, true);
 	}
 }

@@ -87,12 +87,24 @@ void UPT_MultiplayMenu::SliderChanged(float value)
 
 void UPT_MultiplayMenu::OnCreateSession(bool bWasSuccessful)
 {
+	UE_LOG(LogTemp, Warning, TEXT("OnCreateSessionCalled"));
 	if (bWasSuccessful)
 	{
 		UWorld* World = GetWorld();
 		if (World)
 		{
 			World->ServerTravel("/Game/Map/MainLevel?listen");
+		}
+
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15.f,
+				FColor::
+				Green,
+				FString::Printf(TEXT("Success to Create Session"))
+			);
 		}
 	}
 	else
@@ -102,8 +114,8 @@ void UPT_MultiplayMenu::OnCreateSession(bool bWasSuccessful)
 			GEngine->AddOnScreenDebugMessage(
 				-1,
 				15.f,
-				FColor::Green,
-				FString::Printf(TEXT("Failed to Create Session Call"))
+				FColor::Red,
+				FString::Printf(TEXT("Failed to Create Session : MultiMenu"))
 			);
 		}
 	}
@@ -111,17 +123,14 @@ void UPT_MultiplayMenu::OnCreateSession(bool bWasSuccessful)
 
 void UPT_MultiplayMenu::OnFindSessions(const TArray<FOnlineSessionSearchResult>& SessionResults, bool bWasSuccessful)
 {
-	if (GEngine)
+	if (bWasSuccessful)
 	{
 		GEngine->AddOnScreenDebugMessage(
 			-1,
 			15.f,
 			FColor::Green,
-			FString::Printf(TEXT("FindSession FIn Multiplay Menu Callback"))
+			FString::Printf(TEXT("FindSession Successed"))
 		);
-	}
-	if (bWasSuccessful)
-	{
 		for (auto Result : SessionResults)
 		{
 			FString UserName = Result.Session.OwningUserName;
@@ -144,6 +153,15 @@ void UPT_MultiplayMenu::OnFindSessions(const TArray<FOnlineSessionSearchResult>&
 			Info->SearchResult = Result;
 			ServerScroll->AddChild(Info);
 		}
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(
+			-1,
+			15.f,
+			FColor::Red,
+			FString::Printf(TEXT("FindSession Failed"))
+		);
 	}
 }
 

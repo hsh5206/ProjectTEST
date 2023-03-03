@@ -20,5 +20,6 @@ void UPTAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	if (Movement)
 	{
 		Speed = Movement->Velocity.Size();
+		bIsInAir = Movement->IsFalling();
 	}
 }

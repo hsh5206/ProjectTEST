@@ -25,4 +25,6 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite)
 	float Speed = 0.f;
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsInAir = false;
 };

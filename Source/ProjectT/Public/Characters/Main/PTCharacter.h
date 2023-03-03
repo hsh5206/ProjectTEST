@@ -23,12 +23,13 @@ class PROJECTT_API APTCharacter : public ACharacter, public IAbilitySystemInterf
 
 public:
 	APTCharacter(const class FObjectInitializer& ObjectInitializer);
+	virtual void PostInitializeComponents() override;
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	virtual void PostInitializeComponents() override;
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void PawnClientRestart() override;
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere, Category = Camera)
@@ -42,14 +43,25 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "PT | Animation")
 	UAnimMontage* DeathMontage;
 
+	/** Enhanced Input */
+	UPROPERTY(EditDefaultsOnly)
+	class UInputMappingContext* DefaultMappingContext;
+	UPROPERTY(EditDefaultsOnly)
+	class UInputAction* MoveInputAction;
+	UPROPERTY(EditDefaultsOnly)
+	class UInputAction* JumpInputAction;
+
 public:
 	/** Move */
 	FVector CurrentLocation = GetActorLocation();
 	bool bIsFirst = false;
-	void Move();
-	void MoveEnd();
 	bool bIsMovePressed = false;
-
+	void OnMoveAction();
+	void OnMoveActionEnd();
+	/** Jump */
+	void OnJumpAction();
+	void OnJumpActionEnd();
+	virtual void Landed(const FHitResult& Hit) override;
 
 /**
 *
@@ -73,6 +85,13 @@ protected:
 	// 클라이언트와 서버에서의 초기화를 위함
 	virtual void PossessedBy(AController* NewController) override; // 서버
 	virtual void OnRep_PlayerState() override; // 클라이언트
+
+	/** Tags */
+protected:
+	UPROPERTY(EditDefaultsOnly)
+	FGameplayTagContainer InAirTag;
+	UPROPERTY(EditDefaultsOnly)
+	FGameplayTag JumpEventTag;
 
 /**
 *

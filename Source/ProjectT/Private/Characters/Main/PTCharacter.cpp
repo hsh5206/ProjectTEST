@@ -9,6 +9,9 @@
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "InputTriggers.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
@@ -42,12 +45,37 @@ APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer)
 	AttributeSet = CreateDefaultSubobject<UPTAttributeSet>(TEXT("AttributeSet"));
 }
 
+void APTCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	if (IsValid(CharacterDataAsset))
+	{
+		SetCharacterData(CharacterDataAsset->CharacterData);
+	}
+}
+
 void APTCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
 	PTController = Cast<APTPlayerController>(GetController());
 	//PTController->SetShowMouseCursor(true);
+}
+
+void APTCharacter::PawnClientRestart()
+{
+	Super::PawnClientRestart();
+
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			Subsystem->ClearAllMappings();
+
+			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		}
+	}
 }
 
 void APTCharacter::Tick(float DeltaTime)
@@ -80,26 +108,30 @@ void APTCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	PlayerInputComponent->BindAction(FName("Move"), EInputEvent::IE_Pressed, this, &APTCharacter::Move);
-	PlayerInputComponent->BindAction(FName("Move"), EInputEvent::IE_Released, this, &APTCharacter::MoveEnd);
-}
+	UE_LOG(LogTemp, Warning, TEXT("EnhancedInput"));
 
-void APTCharacter::PostInitializeComponents()
-{
-	Super::PostInitializeComponents();
 
-	if (IsValid(CharacterDataAsset))
+	if (UEnhancedInputComponent* PlayerEnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		SetCharacterData(CharacterDataAsset->CharacterData);
+		if (MoveInputAction)
+		{
+			PlayerEnhancedInputComponent->BindAction(MoveInputAction, ETriggerEvent::Triggered, this, &APTCharacter::OnMoveAction);
+			PlayerEnhancedInputComponent->BindAction(MoveInputAction, ETriggerEvent::Completed, this, &APTCharacter::OnMoveActionEnd);
+		}
+		if (JumpInputAction)
+		{
+			PlayerEnhancedInputComponent->BindAction(JumpInputAction, ETriggerEvent::Triggered, this, &APTCharacter::OnJumpAction);
+			PlayerEnhancedInputComponent->BindAction(JumpInputAction, ETriggerEvent::Completed, this, &APTCharacter::OnJumpActionEnd);
+		}
 	}
 }
 
-void APTCharacter::Move()
+void APTCharacter::OnMoveAction()
 {
 	bIsMovePressed = true;
 }
 
-void APTCharacter::MoveEnd()
+void APTCharacter::OnMoveActionEnd()
 {
 	bIsMovePressed = false;
 	FHitResult HitResult;
@@ -109,6 +141,29 @@ void APTCharacter::MoveEnd()
 		bIsFirst = true;
 		CurrentLocation = HitResult.Location;
 		UAIBlueprintHelperLibrary::SimpleMoveToLocation(PTController, CurrentLocation);
+	}
+}
+
+void APTCharacter::OnJumpAction()
+{
+	FGameplayEventData Payload;
+	Payload.Instigator = this;
+	Payload.EventTag = JumpEventTag;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, JumpEventTag, Payload);
+}
+
+void APTCharacter::OnJumpActionEnd()
+{
+	//StopJumping();
+}
+
+void APTCharacter::Landed(const FHitResult& Hit)
+{
+	Super::Landed(Hit);
+
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->RemoveActiveEffectsWithTags(InAirTag);
 	}
 }
 

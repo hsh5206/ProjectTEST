@@ -34,6 +34,8 @@ protected:
 	class USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class UCameraComponent* Camera;
+	UPROPERTY(Replicated, VisibleAnywhere, Category = Camera)
+	class UInventoryComponent* Inventory = nullptr;
 	class APTPlayerController* PTController;
 	class UPTAnimInstance* PTAnimInstance;
 
@@ -115,6 +117,4 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly)
 	class UPTCharacterDataAsset* CharacterDataAsset;
-
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps);
 };

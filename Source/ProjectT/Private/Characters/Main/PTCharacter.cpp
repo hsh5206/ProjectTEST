@@ -18,6 +18,7 @@
 #include "AbilitySystem/Components/PTAbilitySystemComponent.h"
 #include "AbilitySystem/Attribute/PTAttributeSet.h"
 #include "DataAssets/PTCharacterDataAsset.h"
+#include "Inventory/InventoryComponent.h"
 
 #include "Characters/Main/PTPlayerController.h"
 
@@ -37,6 +38,10 @@ APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer)
 	Camera->SetupAttachment(SpringArm);
 
 	bAlwaysRelevant = true;
+
+	/** 추후 플레이어 컨트롤러나 스테이트로 이동 */
+	Inventory = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
+	Inventory->SetIsReplicated(true);
 
 	/** Ability System */
 	AbilitySystemComponent = CreateDefaultSubobject<UPTAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -264,9 +269,10 @@ void APTCharacter::InitFromCharacterData(const FCharacterData& InCharacterData, 
 
 }
 
-void APTCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)
+void APTCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(APTCharacter, CharacterData);
+	DOREPLIFETIME(APTCharacter, Inventory);
 }

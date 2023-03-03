@@ -11,4 +11,10 @@ class UItemStaticData : public UObject
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	FName Name;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TSubclassOf<class AItemBase> ItemActorClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FName AttachmentSocket = NAME_None;
 };

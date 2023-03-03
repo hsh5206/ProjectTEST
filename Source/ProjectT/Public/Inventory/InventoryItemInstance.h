@@ -33,6 +33,10 @@ public:
 	void OnRep_Equipped();
 
 	/** 추후 구현 */
-	virtual void OnEquipped();
+	virtual void OnEquipped(class AActor* InOwner = nullptr);
 	virtual void OnUnequipped();
+
+protected:
+	UPROPERTY(Replicated)
+	class AItemBase* ItemActor = nullptr;
 };

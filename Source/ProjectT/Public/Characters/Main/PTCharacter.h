@@ -27,6 +27,10 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	/** Inventory */
+	UPROPERTY(Replicated, EditAnywhere)
+	class UInventoryComponent* InventoryComponent;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void PawnClientRestart() override;
@@ -34,8 +38,6 @@ protected:
 	class USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class UCameraComponent* Camera;
-	UPROPERTY(Replicated, VisibleAnywhere, Category = Camera)
-	class UInventoryComponent* Inventory = nullptr;
 	class APTPlayerController* PTController;
 	class UPTAnimInstance* PTAnimInstance;
 
@@ -52,6 +54,10 @@ protected:
 	class UInputAction* MoveInputAction;
 	UPROPERTY(EditDefaultsOnly)
 	class UInputAction* JumpInputAction;
+	UPROPERTY(EditDefaultsOnly)
+	class UInputAction* InventoryAction;
+	UPROPERTY(EditDefaultsOnly)
+	class UInputAction* GetInputAction;
 
 public:
 	/** Move */
@@ -64,6 +70,10 @@ public:
 	void OnJumpAction();
 	void OnJumpActionEnd();
 	virtual void Landed(const FHitResult& Hit) override;
+	/** Get */
+	void GetAction();
+	/** Inventory */
+	void OnInventoryPressed();
 
 /**
 *

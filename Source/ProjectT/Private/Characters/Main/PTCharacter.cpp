@@ -18,9 +18,9 @@
 #include "AbilitySystem/Components/PTAbilitySystemComponent.h"
 #include "AbilitySystem/Attribute/PTAttributeSet.h"
 #include "DataAssets/PTCharacterDataAsset.h"
-#include "Inventory/InventoryComponent.h"
-
 #include "Characters/Main/PTPlayerController.h"
+
+#include "Inventory/InventoryComponent.h"
 
 APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer)
 {
@@ -39,9 +39,9 @@ APTCharacter::APTCharacter(const class FObjectInitializer& ObjectInitializer)
 
 	bAlwaysRelevant = true;
 
-	/** 추후 플레이어 컨트롤러나 스테이트로 이동 */
-	Inventory = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
-	Inventory->SetIsReplicated(true);
+	/** Inventory */
+	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
+	InventoryComponent->SetIsReplicated(true);
 
 	/** Ability System */
 	AbilitySystemComponent = CreateDefaultSubobject<UPTAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -125,8 +125,16 @@ void APTCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		}
 		if (JumpInputAction)
 		{
-			PlayerEnhancedInputComponent->BindAction(JumpInputAction, ETriggerEvent::Triggered, this, &APTCharacter::OnJumpAction);
+			PlayerEnhancedInputComponent->BindAction(JumpInputAction, ETriggerEvent::Started, this, &APTCharacter::OnJumpAction);
 			PlayerEnhancedInputComponent->BindAction(JumpInputAction, ETriggerEvent::Completed, this, &APTCharacter::OnJumpActionEnd);
+		}
+		if (GetInputAction)
+		{
+			PlayerEnhancedInputComponent->BindAction(GetInputAction, ETriggerEvent::Started, this, &APTCharacter::GetAction);
+		}
+		if (InventoryAction)
+		{
+			PlayerEnhancedInputComponent->BindAction(InventoryAction, ETriggerEvent::Started, this, &APTCharacter::OnInventoryPressed);
 		}
 	}
 }
@@ -173,6 +181,16 @@ void APTCharacter::Landed(const FHitResult& Hit)
 
 	CurrentLocation = GetActorLocation();
 	UAIBlueprintHelperLibrary::SimpleMoveToLocation(PTController, CurrentLocation);
+}
+
+void APTCharacter::GetAction()
+{
+
+}
+
+void APTCharacter::OnInventoryPressed()
+{
+	InventoryComponent->ToggleInventory();
 }
 
 /** 
@@ -274,5 +292,5 @@ void APTCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(APTCharacter, CharacterData);
-	DOREPLIFETIME(APTCharacter, Inventory);
+	DOREPLIFETIME(APTCharacter, InventoryComponent);
 }

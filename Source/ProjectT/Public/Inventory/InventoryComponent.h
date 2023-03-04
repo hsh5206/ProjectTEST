@@ -4,40 +4,30 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "InventoryList.h"
+
 #include "InventoryComponent.generated.h"
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+
+UCLASS(editinlinenew, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class PROJECTT_API UInventoryComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:	
+public:
 	UInventoryComponent();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	virtual void InitializeComponent() override;
 
-	UFUNCTION(BlueprintCallable)
-	void AddItem(TSubclassOf<UItemStaticData> InItemStaticDataClass);
-	UFUNCTION(BlueprintCallable)
-	void RemoveItem(TSubclassOf<UItemStaticData> OutItemStaticDataClass);
-	UFUNCTION(BlueprintCallable)
-	void EquipItem(TSubclassOf<UItemStaticData> EquipItemStaticDataClass);
-	UFUNCTION(BlueprintCallable)
-	void UnEquipeItem();
+protected:
+	virtual void BeginPlay() override;
 
-	UFUNCTION(BlueprintCallable, BlueprintPure)
-	UInventoryItemInstance* GetEquippedItem() const;
+public:
+	class UInventoryWidget* InventoryWidget;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class TSubclassOf<UInventoryWidget> InventoryWidgetClass;
+	void ToggleInventory();
 
-public:	
-	UPROPERTY(Replicated)
-	FInventoryList InventoryList;
+	UPROPERTY(VisibleAnywhere)
+	TArray<TSubclassOf<class AItemBase>> Inventory;
 
-	UPROPERTY(EditDefaultsOnly)
-	TArray<TSubclassOf<UItemStaticData>> DefaultItems;
-
-	UPROPERTY(Replicated)
-	UInventoryItemInstance* CurrentItem = nullptr;
-
-	virtual bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
+	void AddItem(class AItemBase* Item);
 };

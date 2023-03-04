@@ -14,18 +14,28 @@ class PROJECTT_API AItemBase : public AActor
 public:	
 	AItemBase();
 	virtual void Tick(float DeltaTime) override;
-	virtual bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 
-	void Init(class UInventoryItemInstance* InItemInstance);
+	UPROPERTY(EditDefaultsOnly)
+	UStaticMeshComponent* Mesh;
 
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(Replicated)
-	class UInventoryItemInstance* ItemInstance = nullptr;
-
 public:	
-	virtual void OnEquipped();
-	virtual void OnUnequipped();
-	virtual void OnDropped();
+	UPROPERTY(EditDefaultsOnly)
+	class USphereComponent* Sphere;
+	UFUNCTION()
+	void OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+	void OnSphereOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	UPROPERTY(EditDefaultsOnly)
+	FName Name;
+	UPROPERTY(EditDefaultsOnly)
+	FText Description;
+	UPROPERTY(EditDefaultsOnly)
+	UTexture2D* Icon;
+	UPROPERTY(EditDefaultsOnly)
+	UStaticMesh* ItemMesh;
+
 };

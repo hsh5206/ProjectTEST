@@ -2,60 +2,55 @@
 
 
 #include "Items/ItemBase.h"
-#include "Engine/ActorChannel.h"
-#include "Net/UnrealNetwork.h"
 
-#include "Inventory/InventoryItemInstance.h"
+#include "Components/SphereComponent.h"
+#include "characters/Main/PTCharacter.h"
+
+#include "Inventory/InventoryComponent.h"
 
 AItemBase::AItemBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	bReplicates = true;
 
+	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
+	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SetRootComponent(Mesh);
+
+	Sphere = CreateDefaultSubobject<USphereComponent>(TEXT("Sphere"));
+	Sphere->SetupAttachment(GetRootComponent());
 }
 
 void AItemBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	if (ItemMesh)
+	{
+		Mesh->SetStaticMesh(ItemMesh);
+	}
+
+	Sphere->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnSphereOverlap);
+	Sphere->OnComponentEndOverlap.AddDynamic(this, &ThisClass::OnSphereOverlapEnd);
+
+}
+
+void AItemBase::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (APTCharacter* Character = Cast<APTCharacter>(OtherActor))
+	{
+		Character->InventoryComponent->AddItem(this);
+		Destroy();
+	}
+
+}
+
+void AItemBase::OnSphereOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+
 }
 
 void AItemBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-}
-
-bool AItemBase::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
-{
-	bool wroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
-
-	wroteSomething = Channel->ReplicateSubobject(ItemInstance, *Bunch, *RepFlags);
-
-	return wroteSomething;
-}
-
-void AItemBase::Init(UInventoryItemInstance* InItemInstance)
-{
-	ItemInstance = InItemInstance;
-}
-
-void AItemBase::OnEquipped()
-{
-}
-
-void AItemBase::OnUnequipped()
-{
-}
-
-void AItemBase::OnDropped()
-{
-}
-
-
-void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(AItemBase, ItemInstance);
 }
